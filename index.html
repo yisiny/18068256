@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋</title>
+</head>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    .title {
+        text-align: center;
+    }
+
+    .chess {
+        display: block;
+        margin: 20px auto;
+
+        box-shadow: 5px 5px 10px #b9b9b9, -2px -2px 5px #efefef;
+        cursor: pointer;
+
+    }
+
+    div {
+        margin: 20px auto;
+        text-align: center;
+    }
+
+    .restart {
+        width: 70px;
+        height: 25px;
+        background-color: #d6ecf0;
+        border-radius: 5px;
+        border: 0 solid #efefef;
+        box-shadow: 2px 2px 2px #b9b9b9;
+        cursor: pointer;
+    }
+</style>
+
+<body>
+    <h3 class="title">--五子棋--</h3>
+    <!-- 这里的canvas的宽高要在这里给，要不然doucomnt拿到的元素之中就取不到里面的450px从而导致绘图失败 -->
+    <canvas class="chess" width="450px" height="450px"></canvas>
+    <div>
+        <button class="restart" onclick="res()">重新开始</button>
+    </div>
+</body>
+<script>
+    let chess = document.getElementsByClassName('chess')[0];
+    var context = chess.getContext("2d");
+    let title = document.getElementsByClassName('title')[0];
+    // 设置画线的颜色
+    context.strokeStyle = "#B9B9B9";
+
+    // 页面中的DOM元素都加载完成后再调用绘制函数
+    window.onload = function () {
+        drawChessBoard();
+    }
+
+
+
+    function drawChessBoard() {
+        for (var i = 0; i < 15; i++) {
+            // 设置横线的起点坐标
+            context.moveTo(15, 15 + (i * 30));
+            // 设置横线的终点坐标
+            context.lineTo(435, 15 + (i * 30));
+            // 连接两点
+            context.stroke();
+
+            // 设置竖线的起点坐标
+            context.moveTo(15 + (i * 30), 15);
+            // 设置竖线的终点坐标
+            context.lineTo(15 + (i * 30), 435);
+            // 连接两点
+            context.stroke();
+        }
+    }
+
+    // 先构建一个赢法统计数组
+    let wins = [];
+    for (let i = 0; i < 15; i++) {
+        wins[i] = [];
+        for (let j = 0; j < 15; j++) {
+            wins[i][j] = [];
+        }
+    }
+
+    let count = 0;//赢法的编号
+
+    // 统计横线赢法
+    for (let i = 0; i < 15; i++) {
+        for (let j = 0; j < 11; j++) {
+            for (let k = 0; k < 5; k++) {
+                wins[j + k][i][count] = true;
+            }
+            count++;
+        }
+    }
+    // 统计竖线赢法
+    for (let i = 0; i < 15; i++) {
+        for (let j = 0; j < 11; j++) {
+            for (let k = 0; k < 5; k++) {
+                wins[i][j + k][count] = true;
+            }
+            count++;
+        }
+    }
+
+    // 斜线赢法
+    for (let i = 0; i < 11; i++) {
+        for (let j = 0; j < 11; j++) {
+            for (let k = 0; k < 5; k++) {
+                wins[i + k][j + k][count] = true;
+            }
+            count++;
+        }
+    }
+    // 反斜线赢法
+    for (let i = 0; i < 11; i++) {
+        for (let j = 14; j > 3; j--) {
+            for (let k = 0; k < 5; k++) {
+                wins[i + k][j - k][count] = true;
+            }
+            count++;
+        }
+    }
+
+    // 定义棋盘的坐标
+    let chessBoard = [];
+    for (let i = 0; i < 15; i++) {
+        chessBoard[i] = [];
+        for (let j = 0; j < 15; j++) {
+            chessBoard[i][j] = 0;
+        }
+    }
+
+    // 进行下棋操作
+    let me = true;//在我下棋的回合me为真
+    let over = false;// 判断游戏是否结束
+    let myWin = [];//纪录用户所在赢法上累计的分值
+    let computerWin = [];//记录计算机所在的赢法上累计的分值
+    for (let i = 0; i < count; i++) {
+        myWin[i] = 0;
+        computerWin[i] = 0;
+    }
+
+    chess.onclick = function (e) {
+        // 如果游戏结束则不能下棋，直接返回
+        if (over) {
+            return
+        };
+        // 判断人是否可以下棋
+        if (!me) {
+            return
+        }
+
+        // 获取x轴与y轴坐标
+        let x = e.offsetX;
+        let y = e.offsetY;
+
+        let i = Math.floor(x / 30);
+        let j = Math.floor(y / 30);
+
+        // 判断是否可以下棋的操作
+        if (chessBoard[i][j] == 0) {
+            // 下一个棋子
+            onStep(i, j, me);
+            // 标记已经下的棋子
+            chessBoard[i][j] = 1;
+
+            for (let k = 0; k < count; k++) {
+                if (wins[i][j][k]) {
+                    myWin[k]++;
+                    if (myWin[k] == 5) {
+                        title.innerHTML = "安波丽我波！居然赢了，太厉害了~~~"
+                        alert("狗子你赢了")
+                        over = true;
+                    }
+                }
+            }
+        }
+        // 计算机下棋
+        if (!over) {
+            me = !me;
+            // 计算机落子
+            setTimeout(() => {
+                computerAI();
+            }, 1000);
+
+
+        }
+    }
+
+    // 封装一个计算机下棋的方法
+    function computerAI() {
+        // 如果下在用户所占用的赢法上的分值
+        let myScore = [];
+        // 如果下在计算机所占用赢法上的分值
+        let computerScore = [];
+
+        for (let i = 0; i < 15; i++) {
+            myScore[i] = [];
+            computerScore[i] = [];
+            for (let j = 0; j < 15; j++) {
+                myScore[i][j] = 0;
+                computerScore[i][j] = 0;
+            }
+        }
+        // 空白字的最大分值
+        let max = 0;
+        // 最大分值所在的坐标
+        let x = 0, y = 0;
+
+        // 开始进行分值赋值和比较
+        for (let i = 0; i < 15; i++) {
+            for (let j = 0; j < 15; j++) {
+                // 判断是否为空白区域才能落子
+                if (chessBoard[i][j] == 0) {
+
+
+                    for (let k = 0; k < count; k++) {
+                        if (wins[i][j][k]) {
+                            // 循环用户的分值
+                            if (myWin[k] == 1) {
+                                myScore[i][j] += 200;
+                            } else if (myWin[k] == 2) {
+                                myScore[i][j] += 400;
+                            } else if (myWin[k] == 3) {
+                                myScore[i][j] += 2000;
+                            } else if (myWin[k] == 4) {
+                                myScore[i][j] += 10000;
+                            }
+                            // 循环计算机的分值
+                            if (computerWin[k] == 1) {
+                                computerScore[i][j] += 220;
+                            } else if (computerWin[k] == 2) {
+                                computerScore[i][j] += 420;
+                            } else if (computerWin[k] == 3) {
+                                computerScore[i][j] += 2200;
+                            } else if (computerWin[k] == 4) {
+                                computerScore[i][j] += 20000;
+                            }
+                        }
+                    }
+                    // 开始比较分值来确定落子的坐标
+                    if (myScore[i][j] > max) {
+                        max = myScore[i][j];
+                        x = i;
+                        y = j;
+                    } else if (myScore[i][j] == max) {
+                        if (computerScore[i][j] > max) {
+                            max = computerScore[i][j];
+                            x = i;
+                            y = j;
+                        }
+                    }
+
+                    if (computerScore[i][j] > max) {
+                        max = computerScore[i][j];
+                        x = i;
+                        y = j;
+                    } else if (computerScore[i][j] == max) {
+                        if (myScore[i][j] > max) {
+                            max = myScore[i][j];
+                            x = i;
+                            y = j;
+                        }
+                    }
+                }
+            }
+        }
+        // 给发出落子的指令
+        onStep(x, y, me);
+        chessBoard[x][y] = 1;
+
+        // 落子之后还需要去判断计算机有没有赢
+        for (let k = 0; k < count; k++) {
+            if (wins[x][y][k]) {
+                computerWin[k] += 1;
+                if (computerWin[k] == 5) {
+                    title.innerHTML = "就这？你就是一个菜狗~~~";
+                    alert("狗子你输了")
+                    over = true;
+                }
+            }
+        }
+
+        if (!over) {
+            me = !me;
+        }
+
+    }
+
+    // 落子的方法
+    function onStep(i, j, me) {
+        // 起笔
+        context.beginPath();
+        context.arc(15 + i * 30, 15 + j * 30, 13, 0, 2 * Math.PI);//画棋子的图
+        // 收笔
+        context.closePath();
+
+        // 判定是谁下的棋子不同的颜色
+        let color;
+        if (me) {
+            color = "black";
+        } else {
+            color = "red";
+        }
+        // 进行填充颜色 
+        context.fillStyle = color;
+        context.fill();
+    }
+
+    // 点击重新开始时候调用函数
+    function res() {
+        window.location.reload();
+    }
+
+
+
+</script>
+
+</html>
